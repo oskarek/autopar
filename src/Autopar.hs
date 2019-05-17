@@ -48,7 +48,7 @@ getNewChunkSize' inf | null inf  = 1
 init :: IO ()
 init = return () -- dummy implementation
 
--- | A version of foldMap that automatically paralellizes chunk-wise,
+-- | A version of foldMap that automatically parallelizes chunk-wise,
 --   using the given chunk size.
 pFoldMapChunk :: (NFData m, Monoid m) => Int -> Int -> (a -> m) -> [a] -> m
 pFoldMapChunk _ n f xs | n < 3 = mconcat (map f xs `using` parList rdeepseq)
@@ -57,7 +57,7 @@ pFoldMapChunk t n f xs         = mconcat mappedChunks
     mappedChunks = concat (map (map f) chunks `using` parBuffer t rdeepseq)
     chunks       = Split.chunksOf n xs
 
--- | An automatically paralellizing foldMap.
+-- | An automatically parallelizing foldMap.
 pFoldMap :: (HasCallStack, NFData m, Monoid m) => (a -> m) -> [a] -> m
 {-# NOINLINE pFoldMap #-}
 pFoldMap f t = unsafePerformIO $ do
@@ -71,11 +71,11 @@ pFoldMap f t = unsafePerformIO $ do
     insertNewMeasurement srcLoc n time
     return res
 
--- | An automatically paralellizing map.
+-- | An automatically parallelizing map.
 pmap :: (HasCallStack, NFData b) => (a -> b) -> [a] -> [b]
 pmap f = pFoldMap (pure . f)
 
--- | An automatically paralellizing filter.
+-- | An automatically parallelizing filter.
 pfilter :: (HasCallStack, NFData a) => (a -> Bool) -> [a] -> [a]
 pfilter pred' = pFoldMap (\x -> [ x | pred' x ])
 
