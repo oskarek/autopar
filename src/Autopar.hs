@@ -14,9 +14,9 @@ import           GHC.Stack
 import qualified Data.List                     as List
 import qualified Data.Map                      as M
 import qualified Data.Maybe                    as May
-import qualified Data.Set as Set
-import qualified Data.List.Split as Split
-import GHC.Conc (getNumCapabilities)
+import qualified Data.Set                      as Set
+import qualified Data.List.Split               as Split
+import           GHC.Conc                       ( getNumCapabilities )
 
 -- Temporary fix for being able to use SrcLoc as keys in a Map
 deriving instance Ord SrcLoc
@@ -62,11 +62,11 @@ pFoldMap :: (HasCallStack, NFData m, Monoid m) => (a -> m) -> [a] -> m
 {-# NOINLINE pFoldMap #-}
 pFoldMap f t = unsafePerformIO $ do
     runtimeMap <- STM.readTVarIO runtimeInfo
-    threads <- getNumCapabilities
+    threads    <- getNumCapabilities
     let srcLoc = callingSrcLoc
-        n = getNewChunkSize runtimeMap callingSrcLoc
-        res = pFoldMapChunk threads n f t
-        time = 1500 -- dumy value - should be measured
+        n      = getNewChunkSize runtimeMap callingSrcLoc
+        res    = pFoldMapChunk threads n f t
+        time   = 1500 -- dumy value - should be measured
     print threads
     insertNewMeasurement srcLoc n time
     return res
