@@ -61,12 +61,11 @@ pFoldMap :: (HasCallStack, NFData m, Monoid m) => (a -> m) -> [a] -> m
 {-# NOINLINE pFoldMap #-}
 pFoldMap f t = unsafePerformIO $ do
     runtimeMap <- STM.readTVarIO runtimeInfo
-    threads    <- getNumCapabilities
+    nthreads   <- getNumCapabilities
     let srcLoc = callingSrcLoc
-        n      = getNewChunkSize runtimeMap callingSrcLoc
-        res    = pFoldMapChunk threads n f t
+        n      = getNewChunkSize runtimeMap srcLoc
+        res    = pFoldMapChunk nthreads n f t
         time   = 1500 -- dumy value - should be measured
-    print threads
     insertNewMeasurement srcLoc n time
     return res
 
