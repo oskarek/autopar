@@ -1,4 +1,5 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE OverloadedLists #-}
 module Autopar
     ( Autopar.init
     , pFoldMap
@@ -32,7 +33,7 @@ runtimeInfo = unsafePerformIO (STM.newTVarIO M.empty)
 -- | Insert a new measurement in the global runtime map.
 insertNewMeasurement :: SrcLoc -> Int -> Int -> IO ()
 insertNewMeasurement srcLoc n time = STM.atomically (STM.modifyTVar runtimeInfo adjust)
-    where adjust = M.adjust (Set.insert (n, time)) srcLoc
+    where adjust = M.insertWith (<>) srcLoc [(n, time)]
 
 -- | Get the chunk size to use in the next evaluation,
 --   based on stored info from previous runs.
