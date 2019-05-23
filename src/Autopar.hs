@@ -54,7 +54,7 @@ init = return () -- dummy implementation
 pFoldMapChunk :: (NFData m, Monoid m) => Int -> Int -> (a -> m) -> [a] -> m
 pFoldMapChunk t n f xs = mconcat mappedChunks
   where
-    mappedChunks = concat (map (map f) chunks `using` parBuffer t rdeepseq)
+    mappedChunks = concat (map f <$> chunks `using` parBuffer t rdeepseq)
     chunks       = Split.chunksOf n xs
 
 -- | An automatically parallelizing foldMap.
