@@ -1,5 +1,4 @@
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE NumericUnderscores #-}
 module Autopar
     ( Autopar.init
     , pFoldMap
@@ -8,46 +7,26 @@ module Autopar
     )
 where
 
-import qualified Control.Concurrent.STM        as STM
 import           Control.Parallel.Strategies
 import           System.IO.Unsafe               ( unsafePerformIO )
-import           GHC.Stack
-import qualified Data.List                     as List
-import qualified Data.Map                      as M
-import qualified Data.Maybe                    as May
-import qualified Data.Set                      as Set
 import qualified Data.List.Split               as Split
 import           GHC.Conc                       ( getNumCapabilities )
+import qualified System.CPUTime                as CPUTime
+import           Control.Exception              ( evaluate )
+import           Control.DeepSeq                ( force )
+import           Data.Tagged
 
--- Temporary fix for being able to use SrcLoc as keys in a Map
-deriving instance Ord SrcLoc
+data Pico
+type PicoSeconds = Tagged Pico Integer
 
-
-type RuntimeInfo = Set.Set (Int, Int) -- Temporary data structure for runtime info
-type RuntimeMap = M.Map SrcLoc RuntimeInfo
-
-runtimeInfo :: STM.TVar RuntimeMap
-{-# NOINLINE runtimeInfo #-}
-runtimeInfo = unsafePerformIO (STM.newTVarIO M.empty)
-
--- | Insert a new measurement in the global runtime map.
-insertNewMeasurement :: SrcLoc -> Int -> Int -> IO ()
-insertNewMeasurement srcLoc n time = STM.atomically (STM.modifyTVar runtimeInfo adjust)
-    where adjust = M.insertWith (<>) srcLoc [(n, time)]
-
--- | Get the chunk size to use in the next evaluation,
---   based on stored info from previous runs.
-getNewChunkSize :: RuntimeMap -> SrcLoc -> Int
-getNewChunkSize rtm s = maybe 1 getNewChunkSize' (rtm M.!? s)
-
-getNewChunkSize' :: RuntimeInfo -> Int
-getNewChunkSize' inf | null inf  = 1
-                     | otherwise = 100 -- dummy value
+-- | The optimal time in picoseconds for a chunk to take
+optChunkTime :: PicoSeconds
+optChunkTime = 7_600_000_000
 
 -- | Initialize the library, to start collect information about
 --   the parallel execution. Should be called at start of program.
 init :: IO ()
-init = return () -- dummy implementation
+init = return () -- not implemented yet
 
 -- | A version of foldMap that automatically parallelizes chunk-wise,
 --   using the given chunk size.
@@ -58,29 +37,34 @@ pFoldMapChunk t n f xs = mconcat mappedChunks
     chunks       = Split.chunksOf n xs
 
 -- | An automatically parallelizing foldMap.
-pFoldMap :: (HasCallStack, NFData m, Monoid m) => (a -> m) -> [a] -> m
+pFoldMap :: (NFData m, Monoid m) => (a -> m) -> [a] -> m
 {-# NOINLINE pFoldMap #-}
-pFoldMap f t = unsafePerformIO $ do
-    runtimeMap <- STM.readTVarIO runtimeInfo
-    nthreads   <- getNumCapabilities
-    let srcLoc = callingSrcLoc
-        n      = getNewChunkSize runtimeMap srcLoc
-        res    = pFoldMapChunk nthreads n f t
-        time   = 1500 -- dumy value - should be measured
-    insertNewMeasurement srcLoc n time
-    return res
+pFoldMap _ []       = mempty
+pFoldMap f (x : xs) = unsafePerformIO $ do
+    (b, execTime) <- time (f x)
+    let chunkSize = fromIntegral (optChunkTime `div` execTime)
+    nthreads <- getNumCapabilities
+    return $ b <> pFoldMapChunk nthreads chunkSize f xs
 
 -- | An automatically parallelizing map.
-pmap :: (HasCallStack, NFData b) => (a -> b) -> [a] -> [b]
+pmap :: NFData b => (a -> b) -> [a] -> [b]
 pmap f = pFoldMap (pure . f)
 
 -- | An automatically parallelizing filter.
-pfilter :: (HasCallStack, NFData a) => (a -> Bool) -> [a] -> [a]
+pfilter :: NFData a => (a -> Bool) -> [a] -> [a]
 pfilter pred' = pFoldMap (\x -> [ x | pred' x ])
 
 
 ---- HELPER FUNCTIONS ----
-callingSrcLoc :: HasCallStack => SrcLoc
-callingSrcLoc = May.fromJust
-    $ List.find ((/= "Autopar") . srcLocModule)
-    $ List.map snd (getCallStack callStack)
+
+-- | Evaluate the argument to normal form and measure the execution time.
+time :: NFData a => a -> IO (a, PicoSeconds)
+time x = do
+    startTime <- getCPUTime
+    res       <- evaluate (force x)
+    endTime   <- getCPUTime
+    return (res, endTime - startTime)
+
+-- | Wapper around CPUTime.getCPUTime
+getCPUTime :: IO PicoSeconds
+getCPUTime = Tagged <$> CPUTime.getCPUTime
