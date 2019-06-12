@@ -42,7 +42,7 @@ pFoldMap :: (NFData m, Monoid m) => (a -> m) -> [a] -> m
 pFoldMap _ []       = mempty
 pFoldMap f (x : xs) = unsafePerformIO $ do
     (b, execTime) <- time (f x)
-    let chunkSize = fromIntegral (optChunkTime `div` execTime)
+    let chunkSize = fromIntegral (optChunkTime `div` max 1 execTime)
     nthreads <- getNumCapabilities
     return $ b <> pFoldMapChunk nthreads chunkSize f xs
 

@@ -1,2 +1,5 @@
+import           Test.Hspec
+import qualified AutoparSpec
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = hspec AutoparSpec.spec
