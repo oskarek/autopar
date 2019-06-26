@@ -7,6 +7,7 @@ module Autopar
     )
 where
 
+import Data.Semigroup ((<>))
 import           Control.Parallel.Strategies
 import           System.IO.Unsafe               ( unsafePerformIO )
 import qualified Data.List.Split               as Split
