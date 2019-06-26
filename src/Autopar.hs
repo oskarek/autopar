@@ -1,4 +1,4 @@
-{-# LANGUAGE NumericUnderscores #-}
+--{-# LANGUAGE NumericUnderscores #-}
 module Autopar
     ( Autopar.init
     , pFoldMap
@@ -21,7 +21,7 @@ type PicoSeconds = Tagged Pico Integer
 
 -- | The optimal time in picoseconds for a chunk to take
 optChunkTime :: PicoSeconds
-optChunkTime = 7_600_000_000
+optChunkTime = 7600000000
 
 -- | Initialize the library, to start collect information about
 --   the parallel execution. Should be called at start of program.
