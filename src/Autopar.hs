@@ -7,7 +7,7 @@ module Autopar
     )
 where
 
-import Data.Semigroup ((<>))
+import Data.Monoid (mappend)
 import           Control.Parallel.Strategies
 import           System.IO.Unsafe               ( unsafePerformIO )
 import qualified Data.List.Split               as Split
@@ -45,7 +45,7 @@ pFoldMap f (x : xs) = unsafePerformIO $ do
     (b, execTime) <- time (f x)
     let chunkSize = fromIntegral (optChunkTime `div` max 1 execTime)
     nthreads <- getNumCapabilities
-    return $ b <> pFoldMapChunk nthreads chunkSize f xs
+    return $ b `mappend` pFoldMapChunk nthreads chunkSize f xs
 
 -- | An automatically parallelizing map.
 pmap :: NFData b => (a -> b) -> [a] -> [b]
