@@ -9,7 +9,6 @@ where
 
 import           Control.Parallel.Strategies
 import qualified ParStrategy1                  as PS1
-import qualified ParStrategy2                  as PS2
 
 -- | Initialize the library, to start collect information about
 --   the parallel execution. Should be called at start of program.
@@ -17,7 +16,7 @@ init :: IO ()
 init = return () -- not implemented yet
 
 strategy :: NFData a => Strategy [a]
-strategy = PS1.parList'
+strategy = PS1.parList
 
 -- | An automatically parallelizing map.
 pmap :: NFData b => (a -> b) -> [a] -> [b]

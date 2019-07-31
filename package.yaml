@@ -30,6 +30,8 @@ dependencies:
 - split
 - deepseq
 - tagged
+- mtl
+- foldl
 
 library:
   source-dirs: src

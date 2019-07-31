@@ -1,11 +1,11 @@
 {-# LANGUAGE NumericUnderscores #-}
 module Util where
 
-import           Control.Parallel.Strategies
 import qualified System.CPUTime                as CPUTime
 import           Control.Exception              ( evaluate )
-import           Control.DeepSeq                ( force )
-import           Data.Tagged
+import           Control.DeepSeq                ( force, NFData )
+import           Data.Tagged                    ( Tagged(..) )
+import qualified Control.Foldl                 as L
 
 data Pico
 type PicoSeconds = Tagged Pico Integer
@@ -26,3 +26,7 @@ time x = do
 -- | Wapper around CPUTime.getCPUTime
 getCPUTime :: IO PicoSeconds
 getCPUTime = Tagged <$> CPUTime.getCPUTime
+
+-- | Get the average value of a container of numbers.
+avg :: (Foldable t, Integral a) => t a -> a
+avg = L.fold (div <$> L.sum <*> L.genericLength)
