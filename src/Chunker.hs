@@ -45,7 +45,8 @@ repeatedly ch = null <$> gets list >>= bool (ch >-> repeatedly ch) (pure [])
 
 -- | Apply a Chunker up to n times.
 count :: Int -> Chunker a -> Chunker a
-count n = fmap concat . replicateM n
+count 0 _ = pure []
+count n ch = null <$> gets list >>= bool (ch >-> count (n-1) ch) (pure [])
 
 -- | Applies the given Chunker, measures how long it takes to
 -- evaluate the contained elements to normal form, and updates
