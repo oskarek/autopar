@@ -63,4 +63,4 @@ measure chunker = chunker >>= \chunks -> do
 calcNewChunkSize :: NFData a => PicoSeconds -> [a] -> IO Int
 calcNewChunkSize opt xs = do
   avgTime <- avg <$> traverse time xs
-  return $ fromIntegral (opt `div` max 1 avgTime)
+  return $ fromIntegral (max 1 (opt `div` max 1 avgTime))
