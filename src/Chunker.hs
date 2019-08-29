@@ -8,7 +8,7 @@ import           Util
 import           Control.Applicative            ( liftA2 )
 import           Data.Bool                      ( bool )
 
-type Chunker a = StateT (ChunkData a) (ReaderT PicoSeconds IO) [[a]]
+type Chunker a = StateT (ChunkData a) (Reader PicoSeconds) [[a]]
 data ChunkData a = CD { chunkSize :: Int, list :: [a] } deriving (Eq, Show)
 
 infixl 1 >->
@@ -20,7 +20,7 @@ infixl 1 >->
 -- | Unwrap the Chunker monad computation as a function.
 runChunker :: Chunker a -> PicoSeconds -> [a] -> ([[a]], ChunkData a)
 runChunker ch optTime =
-  unsafePerformIO . flip runReaderT optTime . runStateT ch . CD 8
+  flip runReader optTime . runStateT ch . CD 8 -- >=> (\(l,d) -> do putStrLn ("eval time: " ++ show (evalTime d) ++ ", chunkSize: " ++ show (chunkSize d)); return (l,d)))
 
 -- | Evaluate a Chunker and get the final value.
 evalChunker :: Chunker a -> PicoSeconds -> [a] -> [[a]]
@@ -54,7 +54,7 @@ count n ch = null <$> gets list >>= bool (ch >-> count (n-1) ch) (pure [])
 measure :: NFData a => Chunker a -> Chunker a
 measure chunker = chunker >>= \chunks -> do
   optTime    <- ask
-  chunkSize' <- liftIO $ calcNewChunkSize optTime (concat chunks)
+  let chunkSize' = unsafePerformIO $ calcNewChunkSize optTime (concat chunks)
   modify (\(CD _ l) -> CD chunkSize' l)
   return chunks
 
