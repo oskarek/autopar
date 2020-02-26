@@ -4,11 +4,16 @@ module Autopar
     , pFoldMap
     , pmap
     , pfilter
+    , psum
     )
 where
 
 import           Control.Parallel.Strategies
 import qualified ParStrategy1                  as PS1
+import Chunker
+import Util
+import Data.Monoid
+import Data.List 
 
 -- | Initialize the library, to start collect information about
 --   the parallel execution. Should be called at start of program.
@@ -29,3 +34,12 @@ pfilter pred' xs = filter pred' xs `using` strategy
 -- | An automatically parallelizing foldMap.
 pFoldMap :: (NFData m, Monoid m) => (a -> m) -> [a] -> m
 pFoldMap f = mconcat . pmap f
+
+-- pFoldMap' :: (NFData m, Monoid m) => (a -> m) -> [a] -> m
+-- pFoldMap' f xs =
+--     let chunker = evalChunker (measure one >-> repeatedly chunk) optChunkTime
+--         chunks  = chunker (map f xs)
+--     in mconcat (map (foldl' (<>) mempty) chunks `using` parBuffer 16 rdeepseq)
+
+psum :: (Num a, NFData a) => [a] -> a
+psum = getSum . pFoldMap Sum

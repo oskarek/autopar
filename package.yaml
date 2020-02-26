@@ -32,6 +32,7 @@ dependencies:
 - tagged
 - mtl
 - foldl
+- random
 
 library:
   source-dirs: src
@@ -54,9 +55,22 @@ tests:
     source-dirs:         test
     ghc-options:
     - -threaded
+    - -eventlog
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - autopar
     - hspec
     - QuickCheck
+
+benchmarks:
+  autopar-bench:
+    main:                Bench.hs
+    source-dirs:         bench
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - autopar
+    - criterion    
