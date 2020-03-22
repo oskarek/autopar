@@ -8,4 +8,5 @@ import           ChunkParList                   ( chunkParList )
 import           Chunker
 
 parList :: NFData a => Strategy [a]
-parList = chunkParList $ repeatedly (measure one >-> count 8 chunk)
+parList = chunkParList chunker
+  where chunker = repeatedly (measure one >-> count 8 chunk)

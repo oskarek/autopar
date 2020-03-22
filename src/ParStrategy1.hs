@@ -10,4 +10,5 @@ import           ChunkParList                   ( chunkParList )
 import           Chunker
 
 parList :: NFData a => Strategy [a]
-parList = chunkParList $ measure one >-> repeatedly chunk
+parList = chunkParList chunker
+  where chunker = measure one >-> repeatedly chunk
