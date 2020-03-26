@@ -1,11 +1,8 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances #-}
 module Chunker (
     Chunker
-  , (>->)
-  , (<-<)
-  , cconcat
   , evalChunker
   , chunkOf
-  , empty
   , one
   , chunk
   , repeatedly
@@ -21,31 +18,22 @@ import           Data.Bool                      ( bool )
 import           System.IO.Unsafe               ( unsafePerformIO )
 import           Util
 
--- TODO: Maybe make `Chunker a` a Monoid
-
-type Chunker a = StateT (ChunkerState a) (Reader PicoSeconds) [[a]]
+newtype ChunkerT s r a = ChunkerT (StateT s (Reader r) a)
+  deriving (Functor, Applicative, Monad, MonadState s, MonadReader r)
+type Chunker a = ChunkerT (ChunkerState a) PicoSeconds [[a]]
 data ChunkerState a = ChunkerState { chunkSize :: Int, list :: [a] }
 
-infixr 1 >->
-infixr 1 <-<
+instance Semigroup (Chunker a) where
+  ch1 <> ch2 = liftA2 (++) ch1 ch2Checked
+    where ch2Checked = null <$> gets list >>= bool ch2 mempty
 
--- | Compose two chunkers, left to right.
-(>->) :: Chunker a -> Chunker a -> Chunker a
-ch1 >-> ch2 = liftA2 (++) ch1 ch2Checked
-  where ch2Checked = null <$> gets list >>= bool ch2 empty
-
--- | Compose two chunkers, right to left.
-(<-<) :: Chunker a -> Chunker a -> Chunker a
-(<-<) = flip (>->)
-
--- | Concat multiple chunkers, to run sequentially.
-cconcat :: Foldable f => f (Chunker a) -> Chunker a
-cconcat = foldr (>->) empty
+instance Monoid (Chunker a) where
+  mempty = return []
 
 -- | Evaluate a Chunker and get the final value.
 evalChunker :: Chunker a -> PicoSeconds -> [a] -> [[a]]
-evalChunker ch optTime =
-  flip runReader optTime . evalStateT ch . ChunkerState 8
+evalChunker (ChunkerT st) optTime =
+  flip runReader optTime . evalStateT st . ChunkerState 8
 
 -- | Chunker that extracts a chunk of the given size.
 chunkOf :: Int -> Chunker a
@@ -53,10 +41,6 @@ chunkOf n = do
   (chnk, rest) <- splitAt n <$> gets list
   modify (\(ChunkerState size _) -> ChunkerState size rest)
   return [chnk]
-
--- | Chunker that does nothing. The identity for chunker composition.
-empty :: Chunker a
-empty = return []
 
 -- | Chunker that extracts a chunk of size 1.
 one :: Chunker a
@@ -68,11 +52,11 @@ chunk = gets chunkSize >>= chunkOf
 
 -- | Chunks the remainder of the list, using the given Chunker repeatedly.
 repeatedly :: Chunker a -> Chunker a
-repeatedly = cconcat . repeat
+repeatedly = mconcat . repeat
 
 -- | Apply a Chunker up to n times.
 count :: Int -> Chunker a -> Chunker a
-count n = cconcat . replicate n
+count n = mconcat . replicate n
 
 -- | Applies the given Chunker, measures how long it takes to
 -- evaluate the contained elements to normal form, and updates
